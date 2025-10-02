@@ -55,7 +55,28 @@ pipeline {
       }
     }
 
-
+    stage('Docker push') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'Docker_Hub', usernameVariable: 'DH_USER', passwordVariable: 'DH_PASS')]) {
+          script {
+            if (isUnix()) {
+              sh """
+                echo "\$DH_PASS" | docker login -u "\$DH_USER" --password-stdin
+                docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                docker logout
+              """
+            } else {
+              bat """
+                echo %DH_PASS% | docker login -u %DH_USER% --password-stdin
+                docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                docker logout
+              """
+            }
+          }
+        }
+      }
+    }
+  }
 
   post {
     always {
