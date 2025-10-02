@@ -1,32 +1,22 @@
 package org.example;
 
-import org.junit.Test;
-import static org.junit.Assert.assertEquals;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ConverterTest {
 
-    private static final double EPS = 1e-9;
-
-    @Test
-    public void zeroC_is32F() {
-        assertEquals(32.0, Converter.toFahrenheit(0.0), EPS);
+    @Test void testFtoC() {
+        assertEquals(0.0,  Converter.fToC(32.0), 1e-6);
+        assertEquals(100.0, Converter.fToC(212.0), 1e-6);
     }
 
-    @Test
-    public void hundredC_is212F() {
-        assertEquals(212.0, Converter.toFahrenheit(100.0), EPS);
+    @Test void testKtoC() {
+        assertEquals(0.0,   Converter.kToC(273.15), 1e-6);
+        assertEquals(100.0, Converter.kToC(373.15), 1e-6);
     }
 
-    @Test
-    public void negative40C_isNegative40F() {
-        assertEquals(-40.0, Converter.toFahrenheit(-40.0), EPS);
-    }
-
-    @Test
-    public void roundTrip_fToC_toF() {
-        double f = 77.0;
-        double c = Converter.toCelsius(f);
-        assertEquals(f, Converter.toFahrenheit(c), 1e-9);
+    @Test void testCtoK() {
+        assertEquals(273.15, Converter.cToK(0.0), 1e-6);
+        assertEquals(373.15, Converter.cToK(100.0), 1e-6);
     }
 }
-

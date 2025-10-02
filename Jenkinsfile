@@ -1,87 +1,96 @@
 pipeline {
-    agent any
-    tools{
-        maven 'Maven3'
+  agent any
 
+  tools {
+    maven 'Maven3'
+  }
+
+  options { timestamps() }
+
+  environment {
+    DOCKER_IMAGE = 'musass/fx-tempconv'
+    DOCKER_TAG   = 'latest'
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        // vaihda haaran nimi jos ei ole 'main'
+        git branch: 'main', url: 'https://github.com/musas888888/javafx-celsius-converter.git'
+      }
     }
 
-    environment {
-        PATH = "C:\\Program Files\\Docker\\Docker\\resources\\bin;${env.PATH}"
-        DOCKERHUB_CREDENTIALS_ID = 'Docker_Hub'
-        DOCKER_IMAGE = 'amirdirin/javafx_with_db2'
-        DOCKER_TAG = 'latest'
+    stage('Build (Maven)') {
+      steps {
+        script {
+          if (isUnix()) {
+            sh  'mvn -B -DskipTests package'
+          } else {
+            bat 'mvn -B -DskipTests package'
+          }
+        }
+      }
     }
 
-    stages {
-        stage('Setup Maven') {
-            steps {
-                script {
-                    def mvnHome = tool name: 'Maven3', type: 'maven'
-                    env.PATH = "${mvnHome}/bin:${env.PATH}"
-                }
-            }
+    stage('Unit tests') {
+      steps {
+        script {
+          if (isUnix()) {
+            sh  'mvn -B test'
+          } else {
+            bat 'mvn -B test'
+          }
         }
-
-        stage('Checkout') {
-            steps {
-                git branch: 'master', url: 'https://github.com/musas888888/javafx-celsius-converter.git'
-            }
+      }
+      post {
+        always {
+          junit testResults: '**/target/surefire-reports/*.xml', allowEmptyResults: true
         }
-
-        stage('Build') {
-            steps {
-                script {
-                    if (isUnix()) {
-                        sh 'mvn clean package -DskipTests'
-                    } else {
-                        bat 'mvn clean package -DskipTests'
-                    }
-                }
-            }
-        }
-
-        stage('Test') {
-            steps {
-                script {
-                    if (isUnix()) {
-                        sh 'mvn test'
-                    } else {
-                        bat 'mvn test'
-                    }
-                }
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    if (isUnix()) {
-                        sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
-                    } else {
-                        bat "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
-                    }
-                }
-            }
-        }
-
-        stage('Push Docker Image to Docker Hub') {
-            steps {
-                script {
-                    docker.withRegistry('https://index.docker.io/v1/', env.DOCKERHUB_CREDENTIALS_ID) {
-                        docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
-                    }
-                }
-            }
-        }
+      }
     }
+
+    stage('Docker build') {
+      steps {
+        script {
+          // Varmista että Dockerfile kopioi shaded JARin:
+          //   COPY target/*-shaded.jar /app/app.jar
+          if (isUnix()) {
+            sh  "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+          } else {
+            bat "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+          }
+        }
+      }
+    }
+
+    stage('Docker push') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'Docker_Hub', usernameVariable: 'DH_USER', passwordVariable: 'DH_PASS')]) {
+          script {
+            if (isUnix()) {
+              sh """
+                echo "\$DH_PASS" | docker login -u "\$DH_USER" --password-stdin
+                docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                docker logout
+              """
+            } else {
+              bat """
+                echo %DH_PASS% | docker login -u %DH_USER% --password-stdin
+                docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                docker logout
+              """
+            }
+          }
+        }
+      }
+    }
+  }
 
   post {
     always {
-        junit(testResults: '**/target/surefire-reports/*.xml', allowEmptyResults: true)
-        jacoco(execPattern: '**/target/jacoco.exec', classPattern: '**/target/classes', sourcePattern: '**/src/main/java', inclusionPattern: '**/*.class', exclusionPattern: '')
+      archiveArtifacts artifacts: 'target/*.jar', onlyIfSuccessful: false
     }
+  }
 }
 
-
-}
 
