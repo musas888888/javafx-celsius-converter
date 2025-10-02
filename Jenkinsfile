@@ -44,30 +44,18 @@ pipeline {
       }
     }
 
-
-
-    stage('Docker push') {
+    stage('Docker build') {
       steps {
-        withCredentials([usernamePassword(credentialsId: 'Docker_Hub', usernameVariable: 'DH_USER', passwordVariable: 'DH_PASS')]) {
-          script {
-            if (isUnix()) {
-              sh """
-                echo "\$DH_PASS" | docker login -u "\$DH_USER" --password-stdin
-                docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
-                docker logout
-              """
-            } else {
-              bat """
-                echo %DH_PASS% | docker login -u %DH_USER% --password-stdin
-                docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
-                docker logout
-              """
-            }
-          }
+        script {
+          // HUOM: Dockerfile:ssa pitää olla esim:
+          //   COPY target/*-shaded.jar /app/app.jar
+          if (isUnix()) { sh  "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ." }
+          else          { bat "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ." }
         }
       }
     }
-  }
+
+
 
   post {
     always {
