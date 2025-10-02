@@ -1,9 +1,6 @@
 pipeline {
   agent any
-
-  /*************** TOOLS ****************/
-  // Jos Manage Jenkins → Tools → Maven installations: Name = Maven3
-  tools { maven 'Maven3' }
+  tools { maven 'Maven-home' }   // ← sama nimi kuin Toolsissa
 
   options { timestamps() }
 
