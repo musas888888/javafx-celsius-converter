@@ -1,21 +1,24 @@
 pipeline {
   agent any
 
-  tools {
-    maven 'Maven3'
-  }
+  /*************** TOOLS ****************/
+  // Jos Manage Jenkins → Tools → Maven installations: Name = Maven3
+  tools { maven 'Maven3' }
 
   options { timestamps() }
 
+  /*************** ENV ******************/
   environment {
+    // vaihda halutessa
     DOCKER_IMAGE = 'musass/fx-tempconv'
     DOCKER_TAG   = 'latest'
   }
 
   stages {
+
     stage('Checkout') {
       steps {
-        // vaihda haaran nimi jos ei ole 'main'
+        // Jos ajat "Pipeline script from SCM", voit käyttää myös: checkout scm
         git branch: 'main', url: 'https://github.com/musas888888/javafx-celsius-converter.git'
       }
     }
@@ -23,11 +26,8 @@ pipeline {
     stage('Build (Maven)') {
       steps {
         script {
-          if (isUnix()) {
-            sh  'mvn -B -DskipTests package'
-          } else {
-            bat 'mvn -B -DskipTests package'
-          }
+          if (isUnix()) { sh  'mvn -B -DskipTests package' }
+          else          { bat 'mvn -B -DskipTests package' }
         }
       }
     }
@@ -35,15 +35,13 @@ pipeline {
     stage('Unit tests') {
       steps {
         script {
-          if (isUnix()) {
-            sh  'mvn -B test'
-          } else {
-            bat 'mvn -B test'
-          }
+          if (isUnix()) { sh  'mvn -B test' }
+          else          { bat 'mvn -B test' }
         }
       }
       post {
         always {
+          // julkaise testiraportit Stage View / Test Result -näkymään
           junit testResults: '**/target/surefire-reports/*.xml', allowEmptyResults: true
         }
       }
@@ -52,13 +50,10 @@ pipeline {
     stage('Docker build') {
       steps {
         script {
-          // Varmista että Dockerfile kopioi shaded JARin:
+          // HUOM: Dockerfile:ssa pitää olla esim:
           //   COPY target/*-shaded.jar /app/app.jar
-          if (isUnix()) {
-            sh  "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
-          } else {
-            bat "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
-          }
+          if (isUnix()) { sh  "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ." }
+          else          { bat "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ." }
         }
       }
     }
@@ -88,6 +83,7 @@ pipeline {
 
   post {
     always {
+      // talleta jarit buildin artefakteiksi
       archiveArtifacts artifacts: 'target/*.jar', onlyIfSuccessful: false
     }
   }
