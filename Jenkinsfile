@@ -44,16 +44,19 @@ pipeline {
       }
     }
 
-    stage('Docker build') {
-      steps {
-        script {
-          // HUOM: Dockerfile:ssa pitää olla esim:
-          //   COPY target/*-shaded.jar /app/app.jar
-          if (isUnix()) { sh  "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ." }
-          else          { bat "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ." }
-        }
+stage('Docker push') {
+  steps {
+    script {
+      // varmista että image on olemassa
+      if (isUnix()) { sh "docker image inspect ${DOCKER_IMAGE}:${DOCKER_TAG} >/dev/null" }
+      else          { bat "docker image inspect ${DOCKER_IMAGE}:${DOCKER_TAG} >nul 2>&1 || exit /b 1" }
+
+      docker.withRegistry('https://index.docker.io/v1/', 'Docker_Hub') {
+        docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
       }
     }
+  }
+}
 
     stage('Docker push') {
       steps {
